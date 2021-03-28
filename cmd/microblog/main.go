@@ -1,3 +1,4 @@
+// cmd/microblog/main.go
 package main
 
 import (
@@ -6,6 +7,7 @@ import (
 
     "log"
 
+    "github.com/AlejoH97/goAPI/internal/data"
     "github.com/AlejoH97/goAPI/internal/server"
 
     _ "github.com/joho/godotenv/autoload"
@@ -15,6 +17,12 @@ func main() {
     port := os.Getenv("PORT")
     serv, err := server.New(port)
     if err != nil {
+        log.Fatal(err)
+    }
+
+    // connection to the database.
+    d := data.New()
+    if err := d.DB.Ping(); err != nil {
         log.Fatal(err)
     }
 
@@ -28,4 +36,5 @@ func main() {
 
     // Attempt a graceful shutdown.
     serv.Close()
+    data.Close()
 }
