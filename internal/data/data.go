@@ -23,6 +23,11 @@ func initDB() {
         log.Panic(err)
     }
 
+    err = MakeMigration(db)
+    if err != nil {
+        log.Panic(err)
+    }
+
     data = &Data{
         DB: db,
     }
@@ -42,3 +47,4 @@ func Close() error {
 
 	return data.DB.Close()
 }
+
