@@ -3,10 +3,11 @@ package server
 
 import (
 	"net/http"
-	"github.com/go-chi/chi"
 	"time"
 	"log"
-
+    
+    "github.com/go-chi/chi"
+    "github.com/go-chi/chi/middleware"
     "github.com/AlejoH97/goAPI/internal/server/v1"
 )
 
@@ -18,6 +19,9 @@ type Server struct {
 // New inicialize a new server with configuration.
 func New(port string) (*Server, error) {
     r := chi.NewRouter()
+
+    r.Use(middleware.Logger)
+    r.Use(middleware.Recoverer)
 
     // API routes version 1.
     r.Mount("/api/v1", v1.New())

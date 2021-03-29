@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"fmt"
 	"strconv"
+    "os"
 	
 	"github.com/go-chi/chi"
 	"github.com/AlejoH97/goAPI/pkg/user"
 	"github.com/AlejoH97/goAPI/pkg/response"
+    "github.com/AlejoH97/goAPI/pkg/claim"
+    "github.com/AlejoH97/goAPI/internal/middleware"
 )
 
 
@@ -120,15 +123,49 @@ func (ur *UserRouter) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 func (ur *UserRouter) Routes() http.Handler {
     r := chi.NewRouter()
 
-    r.Get("/", ur.GetAllHandler)
+    r.Post("/login/", ur.LoginHandler)
 
-    r.Post("/", ur.CreateHandler)
+    r.With(middleware.Authorizator).Get("/", ur.GetAllHandler)
 
-    r.Get("/{id}", ur.GetOneHandler)
+    r.With(middleware.Authorizator).Post("/", ur.CreateHandler)
 
-    r.Put("/{id}", ur.UpdateHandler)
+    r.With(middleware.Authorizator).Get("/{id}", ur.GetOneHandler)
 
-    r.Delete("/{id}", ur.DeleteHandler)
+    r.With(middleware.Authorizator).Put("/{id}", ur.UpdateHandler)
+
+    r.With(middleware.Authorizator).Delete("/{id}", ur.DeleteHandler)
 
     return r
+}
+
+func (ur *UserRouter) LoginHandler(w http.ResponseWriter, r *http.Request) {
+    var u user.User
+    err := json.NewDecoder(r.Body).Decode(&u)
+    if err != nil {
+        response.HTTPError(w, r, http.StatusBadRequest, err.Error())
+        return
+    }
+
+    defer r.Body.Close()
+
+    ctx := r.Context()
+    storedUser, err := ur.Repository.GetByUsername(ctx, u.Username)
+    if err != nil {
+        response.HTTPError(w, r, http.StatusNotFound, err.Error())
+        return
+    }
+
+    if !storedUser.PasswordMatch(u.Password) {
+        response.HTTPError(w, r, http.StatusBadRequest, "password don't match")
+        return
+    }
+
+    c := claim.Claim{ID: int(storedUser.ID)}
+    token, err := c.GetToken(os.Getenv("SIGNING_STRING"))
+    if err != nil {
+        response.HTTPError(w, r, http.StatusInternalServerError, err.Error())
+        return
+    }
+
+    response.JSON(w, r, http.StatusOK, response.Map{"token": token})
 }
